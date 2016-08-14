@@ -1,6 +1,13 @@
 require 'twitter'
 require 'pp'
 require 'json'
+require 'optparse'
+
+option={}
+OptionParser.new do |opt|
+  opt.on('--dry-run', 'dry run') { |v| option[:dryrun] = v }
+  opt.parse!(ARGV)
+end
 
 client = Twitter::REST::Client.new do |config|
   config.consumer_key        = ENV['TW_CONSUMER_KEY']
@@ -23,8 +30,12 @@ end
 following_ids = client.friend_ids.attrs[:ids]
 no_interest_users = mention_users.map{ |u| u[:id] } - following_ids
 
-pp client.block(no_interest_users)
+tag = '[DryRun]'
+unless option[:dryrun]
+  client.block(no_interest_users)
+  tag = '[Blocked]'
+end
 
 File.open("/tmp/tw_blocked", "a") do |f|
-  f.write(mention_users.select{ |u| no_interest_users.include?(u[:id]) }.to_json + "\n")
+  f.write(Time.now.to_s + ' - ' + tag + mention_users.select{ |u| no_interest_users.include?(u[:id]) }.to_json + "\n")
 end
